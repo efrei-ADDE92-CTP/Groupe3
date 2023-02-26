@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:alpine3.16
+FROM python:3.8-slim
 WORKDIR /usr/src/app
 
 
