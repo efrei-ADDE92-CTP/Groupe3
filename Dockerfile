@@ -8,7 +8,7 @@ RUN pip install  --no-cache-dir -r requirements.txt
 COPY requirements.txt requirements.txt
 COPY API_flask.py API_flask.py
 COPY knn_Iris.pkl knn_Iris.pkl
-
+COPY . .
 # final configuration
 ENV FLASK_APP=API_flask
 EXPOSE 8000
