@@ -6,65 +6,49 @@ on:
 name: Groupe3-workflow
 
 jobs:
-    build-and-deploy:
-        runs-on: ubuntu-latest
-        steps:
-        # checkout the repo
-        - name: 'Checkout GitHub Action'
-          uses: actions/checkout@main
-        
-        # login to Azure
-        - name: 'Login via Azure CLI'
-          uses: azure/login@v1
-          with:
-            creds: ${{ secrets.AZURE_CREDENTIALS }}
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
 
-        # login to ACR
-        - name: 'Login to ACR'
-          uses: azure/docker-login@v1
-          with:
-            login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-            username: ${{ secrets.REGISTRY_USERNAME }}
-            password: ${{ secrets.REGISTRY_PASSWORD }}
-        
-        # lint dockerfile
-        - name: 'Hadolint test'
-          id: hadolint_test
-          run: |
-            OUTPUT=$(docker run --rm -i hadolint/hadolint < dockerfile | wc -l)
-            echo "::set-output name=OUTPUT::$OUTPUT"
-        
-        # build and push image to ACR
-        - name: 'Build and push image'
-          if: steps.hadolint_test.outputs.OUTPUT==0
-          run: |
-            docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/classifier_g${{ secrets.GROUPE }}:v1
-            docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/classifier_g${{ secrets.GROUPE }}:v1
-        # deploy to ACA
-        - name: Build and deploy Container App
-          uses: azure/container-apps-deploy-action@47e03a783248cc0b5647f7ea03a8fb807fbc8e2f
-          with:
-            containerAppName: classifier-g${{ secrets.GROUPE }}
-            resourceGroup: ${{ secrets.RESOURCE_GROUP }}
-            imageToDeploy: ${{ secrets.REGISTRY_LOGIN_SERVER }}/classifier_g${{ secrets.GROUPE }}:v1
-        
-        # updating ACA
-        - name: Update ACA
-          uses: azure/CLI@v1
-          with:
-            inlineScript: |
-              az containerapp update \
-                -n classifier-g${{ secrets.GROUPE }} \
-                -g ${{ secrets.RESOURCE_GROUP }} \
-                --min-replicas 0 \
-                --max-replicas 10 \
-                --scale-rule-name my-http-rule \
-                --scale-rule-type http \
-                --scale-rule-http-concurrency 10
-              az containerapp ingress enable \
-                -n classifier-g${{ secrets.GROUPE }} \
-                -g ${{ secrets.RESOURCE_GROUP }} \
-                --type external \
-                --allow-insecure \
-                --target-port 80 \
-                --transport auto
+      - name: "Login via Azure CLI"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: hadolint
+        uses: hadolint/hadolint-action@v2.0.0
+        with:
+          dockerfile: Dockerfile
+
+      - name: Build and push image
+        run: |
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/iris-project-grp3:latest
+          az acr build --registry ${{ secrets.REGISTRY_LOGIN_SERVER }} --image iris-project-grp3:latest .
+      - name: Build and deploy Container App
+        uses: azure/container-apps-deploy-action@v0
+        with:
+          containerAppName: container-app-grp3
+          resourceGroup: ${{ secrets.RESOURCE_GROUP }}
+          imageToDeploy: ${{ secrets.REGISTRY_LOGIN_SERVER }}/iris-project-grp3:latest
+          containerAppEnvironment: grp3-env
+
+      - name: Configure Autoscaling
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az containerapp update \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --name container-grp8 \
+            --min-replicas 0 \
+            --max-replicas 5 \
+            --scale-rule-name azure-http-rule \
+            --scale-rule-type http \
+            --scale-rule-http-concurrency 100
