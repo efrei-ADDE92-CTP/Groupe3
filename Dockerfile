@@ -2,9 +2,14 @@
 FROM ubuntu:22.04
 
 # install app dependencies
-RUN apt-get update && apt-get install -y python3 python3-pip
+RUN apt-get update && apt-get install --no-install-recommends -y python3 python3-pip \
+&& apt-get clean \
+&& rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+
 COPY . . 
-RUN pip install -r requirements.txt
+RUN pip install  --no-cache-dir -r requirements.txt
 
 # install app
 COPY API_flask.py /
