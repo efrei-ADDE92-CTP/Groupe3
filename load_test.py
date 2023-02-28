@@ -1,13 +1,14 @@
 from flask import Flask
 from locust import HttpUser, task
+import random
 
 app = Flask(__name__)
 
 class HelloWorldUser(HttpUser):
     @task
-    def hello_world(self):
-        self.client.post("/predict", data='{"sepal_length": 5.1,"sepal_width": 3.5,"petal_length": 1.4,"petal_width": 0.2}')
+    def load_charge(self):
+        self.client.post("predict", data='{"sepal_length": '+ str(random.uniform(0, 10))+ ',"sepal_width":'+ str(random.randrange(0, 10))+',"petal_length":'+ str(random.uniform(0, 10))+',"petal_width": '+ str(random.uniform(0, 10))+'}')
         
 if __name__ == '__main__':
-    app.run(port=8000, debug=True)
+    app.run(port=5000, debug=True)
     
